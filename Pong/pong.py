@@ -25,6 +25,7 @@ def reset_ball():
 # Update - Handle ongoing input, update positions, check interactions
 def update():
     
+    # Key board input
     if keyboard[keys.S]:
         paddle1.y += 5
     if keyboard[keys.W]:
@@ -34,12 +35,14 @@ def update():
     if keyboard[keys.UP]:
         paddle2.y -= 5
     
+    # Moving the ball
     ball.x += ball.dx
     ball.y += ball.dy    
     
     if ball.colliderect(paddle1) or ball.colliderect(paddle2):
         ball.dx *= -1
 
+    # Change score based on which side the ball makes contact with
     if ball.x < paddle1.x:
         paddle2.score += 1
         reset_ball()
@@ -47,6 +50,7 @@ def update():
         paddle1.score += 1
         reset_ball()
     
+    # Handle collisions with the top and bottom
     if ball.top < 0 or ball.bottom > HEIGHT:
         ball.dy *= -1
     
