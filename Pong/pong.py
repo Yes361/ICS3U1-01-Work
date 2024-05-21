@@ -8,7 +8,8 @@ os.environ['SDL_VIDEO_CENTERED'] = '1' #Forces window to be centered on screen.
 WIDTH = 600
 HEIGHT = 600
 speed_increase = 0.05
-play = True
+play = False
+single_player_mode = True
 
 # Initialize primary Actors
 paddle1 = Actor('paddle_blue', center=(0, 0))
@@ -28,10 +29,19 @@ def reset_ball():
     ball.dy = sin(direction) * 5
     
 def switch_game_state():
-    pass
+    global play, single_player_mode
+    play = not play
+    if keyboard[keys.S]:
+        single_player_mode = not single_player_mode
+
+def on_key_down(key):
+    global play
+    if not play:
+        play = True
 
 # Update - Handle ongoing input, update positions, check interactions
 def update():
+    global play
     # Key board input
     if play:
         if keyboard[keys.S]:
@@ -42,14 +52,17 @@ def update():
             paddle1.y -= 5
             if paddle1.top < 0:
                 paddle1.y += 5
-        if keyboard[keys.DOWN]:
+        if keyboard[keys.DOWN] and single_player_mode:
             paddle2.y += 5
             if paddle2.bottom > HEIGHT:
                 paddle2.y -= 5
-        if keyboard[keys.UP]:
+        if keyboard[keys.UP] and single_player_mode:
             paddle2.y -= 5
             if paddle2.top < 0:
                 paddle2.y += 5
+                
+        if not single_player_mode:
+            paddle2.y = ball.y
         
         # Moving the ball
         ball.x += ball.dx
@@ -66,10 +79,14 @@ def update():
             paddle2.score += 1
             sounds.laserretro.play()
             reset_ball()
+            play = False
+            clock.schedule(switch_game_state, 1)
         elif ball.right > WIDTH:
             paddle1.score += 1
             sounds.laserretro.play()
             reset_ball()
+            play = False
+            clock.schedule(switch_game_state, 1)
         
         # Handle collisions with the top and bottom
         if ball.top < 0 or ball.bottom > HEIGHT:
@@ -89,3 +106,11 @@ def draw():
 reset_ball()
 
 pgzrun.go()
+
+"""
+TODO:
+
+Find a fix for weird or unexpected collision behaviours.
+Try a single-player mode, in which one player is controlled automatically by the computer.
+
+"""
