@@ -7,16 +7,17 @@ import os
 os.environ['SDL_VIDEO_CENTERED'] = '1' #Forces window to be centered on screen.
 WIDTH = 600
 HEIGHT = 600
+margins = 20
 speed_increase = 0.05
 play = False
 single_player_mode = True
 
 # Initialize primary Actors
-paddle1 = Actor('paddle_blue', center=(0, 0))
+paddle1 = Actor('paddle_blue', center=(margins, 0))
 paddle1.score = 0
 paddle1.angle = 90
 
-paddle2 = Actor('paddle_red', center=(WIDTH, 0))
+paddle2 = Actor('paddle_red', center=(WIDTH - margins, 0))
 paddle2.score = 0
 paddle2.angle = 90
 
@@ -29,15 +30,16 @@ def reset_ball():
     ball.dy = sin(direction) * 5
     
 def switch_game_state():
-    global play, single_player_mode
+    global play
     play = not play
-    if keyboard[keys.S]:
-        single_player_mode = not single_player_mode
 
 def on_key_down(key):
-    global play
+    global play, single_player_mode
     if not play:
-        play = True
+        if key == keys.B:
+            single_player_mode = not single_player_mode
+        else:
+            play = True
 
 # Update - Handle ongoing input, update positions, check interactions
 def update():
@@ -79,14 +81,10 @@ def update():
             paddle2.score += 1
             sounds.laserretro.play()
             reset_ball()
-            play = False
-            clock.schedule(switch_game_state, 1)
         elif ball.right > WIDTH:
             paddle1.score += 1
             sounds.laserretro.play()
             reset_ball()
-            play = False
-            clock.schedule(switch_game_state, 1)
         
         # Handle collisions with the top and bottom
         if ball.top < 0 or ball.bottom > HEIGHT:
@@ -111,6 +109,5 @@ pgzrun.go()
 TODO:
 
 Find a fix for weird or unexpected collision behaviours.
-Try a single-player mode, in which one player is controlled automatically by the computer.
 
 """
