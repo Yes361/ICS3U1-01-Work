@@ -74,16 +74,17 @@ def update():
             ball.dy *= 1 + speed_increase
             ball.dx *= -1 - speed_increase
             sounds.impactmetal.play()
-            
 
         # Change score based on which side the ball makes contact with
         if ball.left < 0:
             paddle2.score += 1
             sounds.laserretro.play()
+            play = False
             reset_ball()
         elif ball.right > WIDTH:
             paddle1.score += 1
             sounds.laserretro.play()
+            play = False
             reset_ball()
         
         # Handle collisions with the top and bottom
