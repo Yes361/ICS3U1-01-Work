@@ -29,10 +29,6 @@ def reset_ball():
     ball.dx = cos(direction) * 5
     ball.dy = sin(direction) * 5
     
-def switch_game_state():
-    global play
-    play = not play
-
 def on_key_down(key):
     global play, single_player_mode
     if not play:
