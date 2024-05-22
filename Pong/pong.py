@@ -40,8 +40,7 @@ def on_key_down(key):
     if not play:
         if key == keys.B:
             single_player_mode = not single_player_mode
-        else:
-            play = True
+    play = True
 
 # Update - Handle ongoing input, update positions, check interactions
 def update():
@@ -70,15 +69,17 @@ def update():
             
         
         if ball.colliderect(paddle1):
+            # change required to resolve collision
             dx = ball.x - paddle1.right
             dy = ball.y - paddle1.top
+            # resolve collision (x/y axis) and change speed
             if abs(dx) < abs(dy):
                 ball.x += dx
                 ball.dx *= -1 - speed_increase
             else:
                 ball.y += dy
                 ball.dy *= -1 - speed_increase
-            # sounds.impactmetal.play()  
+            sounds.impactmetal.play()  
         elif ball.colliderect(paddle2):
             dx = ball.x - paddle2.left
             dy = ball.y - paddle2.top
@@ -89,21 +90,24 @@ def update():
                 ball.y += dy
                 ball.dy *= -1 - speed_increase
 
-            # sounds.impactmetal.play()
+            sounds.impactmetal.play()
 
         # Moving the ball
         ball.x += ball.dx
         ball.y += ball.dy
 
         # Change score based on which side the ball makes contact with
+        hit = False
         if ball.left < 0:
             paddle2.score += 1
-            # sounds.laserretro.play()
-            play = False
-            reset_ball()
+            hit = True
         elif ball.right > WIDTH:
             paddle1.score += 1
-            # sounds.laserretro.play()
+            hit = True
+        
+        # Handle ball flying off-screen
+        if hit:
+            sounds.laserretro.play()
             play = False
             reset_ball()
         
@@ -120,6 +124,7 @@ def draw():
     
     screen.draw.text(f'{paddle1.score}', (50, 50))
     screen.draw.text(f'{paddle2.score}', (WIDTH - 50, 50))
+    screen.draw.text(f'Press B when the ball is reset to change to single-player mode', center=(WIDTH / 2, HEIGHT - 50))
     
 # Setup and Go:
 reset_ball()
