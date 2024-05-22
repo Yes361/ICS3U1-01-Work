@@ -7,6 +7,8 @@ import os
 os.environ['SDL_VIDEO_CENTERED'] = '1' #Forces window to be centered on screen.
 WIDTH = 600
 HEIGHT = 600
+
+# Global variables
 margins = 100
 speed_increase = 0.05
 play = False
@@ -22,19 +24,16 @@ paddle2.score = 0
 paddle2.angle = 90
 
 ball = Actor('ball_grey')
-ball.paddle_contact = False
 
 def reset_ball():
     ball.pos = (300, 300)
-    direction = random.randint(0, 360) * pi / 180
     
-    if paddle1.score < paddle2.score:
-        direction = random.randint(-45, 45) * pi / 180
-    else:
-        direction = random.randint(135, 225) * pi / 180
+    min_val, max_val = (-45, 45) if paddle1.score < paddle2.score else (135, 225)
+    direction = random.randint(min_val, max_val) * pi / 180
     ball.dx = cos(direction) * 5
     ball.dy = sin(direction) * 5
-    
+
+# Enable replay and single player mode 
 def on_key_down(key):
     global play, single_player_mode
     if not play:
@@ -49,12 +48,14 @@ def update():
     if play:
         if keyboard[keys.S]:
             paddle1.y += 5
+            # Vertical constraint
             if paddle1.bottom > HEIGHT:
                 paddle1.y -= 5
         if keyboard[keys.W]:
             paddle1.y -= 5
             if paddle1.top < 0:
                 paddle1.y += 5
+                
         if keyboard[keys.DOWN] and single_player_mode:
             paddle2.y += 5
             if paddle2.bottom > HEIGHT:
@@ -64,9 +65,9 @@ def update():
             if paddle2.top < 0:
                 paddle2.y += 5
                 
+        # Single Player logic
         if not single_player_mode:
             paddle2.y = ball.y
-            
         
         if ball.colliderect(paddle1):
             # change required to resolve collision
@@ -130,10 +131,3 @@ def draw():
 reset_ball()
 
 pgzrun.go()
-
-"""
-TODO:
-
-Find a fix for weird or unexpected collision behaviours.
-
-"""
