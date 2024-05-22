@@ -7,7 +7,7 @@ import os
 os.environ['SDL_VIDEO_CENTERED'] = '1' #Forces window to be centered on screen.
 WIDTH = 600
 HEIGHT = 600
-margins = 20
+margins = 100
 speed_increase = 0.05
 play = False
 single_player_mode = True
@@ -22,10 +22,16 @@ paddle2.score = 0
 paddle2.angle = 90
 
 ball = Actor('ball_grey')
+ball.paddle_contact = False
 
 def reset_ball():
     ball.pos = (300, 300)
     direction = random.randint(0, 360) * pi / 180
+    
+    if paddle1.score < paddle2.score:
+        direction = random.randint(-45, 45) * pi / 180
+    else:
+        direction = random.randint(135, 225) * pi / 180
     ball.dx = cos(direction) * 5
     ball.dy = sin(direction) * 5
     
@@ -61,25 +67,43 @@ def update():
                 
         if not single_player_mode:
             paddle2.y = ball.y
+            
         
+        if ball.colliderect(paddle1):
+            dx = ball.x - paddle1.right
+            dy = ball.y - paddle1.top
+            if abs(dx) < abs(dy):
+                ball.x += dx
+                ball.dx *= -1 - speed_increase
+            else:
+                ball.y += dy
+                ball.dy *= -1 - speed_increase
+            # sounds.impactmetal.play()  
+        elif ball.colliderect(paddle2):
+            dx = ball.x - paddle2.left
+            dy = ball.y - paddle2.top
+            if abs(dx) < abs(dy):
+                ball.x += dx
+                ball.dx *= -1 - speed_increase
+            else:
+                ball.y += dy
+                ball.dy *= -1 - speed_increase
+
+            # sounds.impactmetal.play()
+
         # Moving the ball
         ball.x += ball.dx
-        ball.y += ball.dy    
-        
-        if ball.colliderect(paddle1) or ball.colliderect(paddle2):
-            ball.dy *= 1 + speed_increase
-            ball.dx *= -1 - speed_increase
-            sounds.impactmetal.play()
+        ball.y += ball.dy
 
         # Change score based on which side the ball makes contact with
         if ball.left < 0:
             paddle2.score += 1
-            sounds.laserretro.play()
+            # sounds.laserretro.play()
             play = False
             reset_ball()
         elif ball.right > WIDTH:
             paddle1.score += 1
-            sounds.laserretro.play()
+            # sounds.laserretro.play()
             play = False
             reset_ball()
         
