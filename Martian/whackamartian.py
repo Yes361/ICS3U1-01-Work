@@ -1,4 +1,5 @@
 import pgzrun
+from pgzero.builtins import Actor, clock, animate, sounds, screen, keys
 import pygame
 import os
 import random 
