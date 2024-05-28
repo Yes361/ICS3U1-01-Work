@@ -26,6 +26,7 @@ player.scale = 0.5 #resizing sprite to something more reasonable
 
 ufo = Actor('enemygreen1', pos=(50, 50))
 ufo.points = 100
+ufo.is_waiting = False
 
 aliens = []
 alien_bullets = []
@@ -40,8 +41,22 @@ alien_color_index = {
     'red': 300
 }
 
+def generate_random_tag(prefix, colors, minIndex=0, maxIndex=0):
+    color = random.choice(colors)
+    if minIndex != maxIndex:
+        index = random.randint(minIndex, maxIndex)
+        digits = len(str(maxIndex))
+        return f'{prefix}{color}{index:0{digits}d}', color, index
+    return f'{prefix}{color}', color
+        
+
 def set_ufo():
     ufo.right = 0
+    tag, _ = generate_random_tag('ufo', ['blue', 'green', 'red', 'yellow'])
+    ufo.image = tag
+    ufo.scale = 0.5
+    
+set_ufo()
 
 shields = []
 def spawn_shield(pos):
@@ -62,9 +77,8 @@ def draw_row_aliens(type, y, points):
 def draw_all_aliens(difficulty):
     last_y = 100
     for i in range(difficulty):
-        color = random.choice(['green', 'red', 'blue', 'black'])
-        type = random.randint(1, 5)
-        draw_row_aliens(f'enemy{color}{type}', last_y, points=alien_color_index[color])
+        tag, color, _ = generate_random_tag('enemy', ['green', 'red', 'blue', 'black'], 1, 5)
+        draw_row_aliens(tag, last_y, points=alien_color_index[color])
         last_y += 50
 
 def determine_direction():
@@ -76,20 +90,22 @@ def determine_direction():
             return True
     return False
 
+def spawn_bullet(pos):
+    tag, _, _ = generate_random_tag('laser', ['blue', 'green', 'red'], 1, 16)
+    bullet = Actor(tag, pos)
+    bullet.scale = 0.5
+    return bullet
 
-def spawn_alien_bullet(type, pos):
-    alien_bullet = Actor(type, pos=pos)
-    alien_bullets.append(alien_bullet)
-
-def alien_shoot():
-    global aliens, lives
+def spawn_alien_bullet():
+    global aliens, alien_bullets, lives
     if len(aliens) == 0:
         lives += 1
         draw_all_aliens(difficulty)
         
     alien = random.choice(aliens)
     if random.random() < 1:
-        spawn_alien_bullet('laserblue07', alien.pos)
+        bullet = spawn_bullet(alien.pos)
+        alien_bullets.append(bullet)
 
 def move_aliens():
     global alien_direction, aliens
@@ -97,9 +113,9 @@ def move_aliens():
     if direction_change := determine_direction():
         alien_direction *= -1
         if alien_direction < 0:
-            alien_direction -= 2
+            alien_direction -= 10
         else:
-            alien_direction += 2
+            alien_direction += 10
     
     below_max_height = False
     for alien in aliens:
@@ -113,7 +129,7 @@ def move_aliens():
         handle_lose_condition()
         return
     
-    alien_shoot()
+    spawn_alien_bullet()
         
 def damage_shield(alien_bullet):
     for idx, shield in enumerate(shields):
@@ -137,14 +153,15 @@ def handle_alien_bullets():
         if damage_shield(alien_bullet):
             alien_bullets.pop(idx)
         
-        if alien_bullet.colliderect(player):
+        elif alien_bullet.colliderect(player):
             alien_bullets.pop(idx)
             lives -= 1
+            # animate_death()
             
             if lives <= 0:
                 handle_lose_condition()
                 
-        if alien_bullet.top > HEIGHT:
+        elif alien_bullet.top > HEIGHT:
             alien_bullets.pop(idx)
             
 def handle_player_bullets():
@@ -164,6 +181,15 @@ def handle_player_bullets():
     if bullet and bullet.bottom < 0:
         bullet = None
 
+def move_ufo():
+    if ufo.left < WIDTH:
+        ufo.x += 1
+        ufo.is_waiting = False
+    elif not ufo.is_waiting:
+        next_time = random.randint(10, 20)
+        clock.schedule(set_ufo, next_time)
+        ufo.is_waiting = True
+        
 def handle_lose_condition():
     global is_playing, bullet
     is_playing = False
@@ -188,6 +214,14 @@ def reset_game():
     spawn_shield((700, 500))
     
     set_ufo()
+
+# def animate_death(frame=1):
+#     global player, is_playing
+#     if frame > 3:
+#         player.image = 'playership2_orange'
+#     else:
+#         player.image = f'star{frame}'
+#         clock.schedule_unique(lambda: animate_death(frame + 1), 1)
 
 def draw_game_screen():
     if not is_playing:
@@ -229,10 +263,7 @@ def update():
             
     handle_alien_bullets()
         
-    if ufo.left < WIDTH:
-        ufo.x += 1
-    else:
-        clock.schedule(set_ufo, 1)
+    move_ufo()
 # Draw - Draw each Actor, and any other UI elements
 def draw():
     screen.clear()
