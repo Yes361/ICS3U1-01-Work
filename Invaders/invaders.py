@@ -16,12 +16,14 @@ lives = 3
 difficulty = 0
 is_playing = False
 has_game_started = False
+paused = False
 
 play_again = Rect(((800 * 1 / 3, 200), (800 / 3, 200)))
 
 # Initialize primary Actors
 player = Actor('playership2_orange')
 player.pos = (WIDTH // 2, HEIGHT - 50)
+player.death_frame = 0
 player.scale = 0.5 #resizing sprite to something more reasonable
 
 ufo = Actor('enemygreen1', pos=(50, 50))
@@ -32,6 +34,7 @@ aliens = []
 alien_bullets = []
 furthest_alien = None
 alien_direction = 20
+alien_delay = 1
 max_height = 450
 
 alien_color_index = {
@@ -108,14 +111,12 @@ def spawn_alien_bullet():
         alien_bullets.append(bullet)
 
 def move_aliens():
-    global alien_direction, aliens
+    global alien_direction, aliens, alien_delay
     
-    if direction_change := determine_direction():
+    direction_change = determine_direction()
+    if direction_change:
         alien_direction *= -1
-        if alien_direction < 0:
-            alien_direction -= 10
-        else:
-            alien_direction += 10
+        alien_delay -= 0.01
     
     below_max_height = False
     for alien in aliens:
@@ -131,6 +132,9 @@ def move_aliens():
     
     spawn_alien_bullet()
         
+    if is_playing:
+        clock.schedule(move_aliens, alien_delay)    
+        
 def damage_shield(alien_bullet):
     for shield in shields:
         if not shield.colliderect(alien_bullet):
@@ -145,6 +149,19 @@ def damage_shield(alien_bullet):
         return True
     return False
 
+def animate_death():
+    global player, is_playing, paused
+    if player.death_frame > 2:
+        paused = False
+        player.image = 'playership2_orange'
+        player.scale = 0.5
+        player.death_frame = 0
+    else:
+        paused = True
+        player.death_frame += 1
+        player.image = f'star{player.death_frame}'
+        clock.schedule_unique(animate_death, 0.3)
+
 def handle_alien_bullets():
     global lives, is_playing
     for alien_bullet in alien_bullets:
@@ -156,11 +173,12 @@ def handle_alien_bullets():
         elif alien_bullet.colliderect(player):
             alien_bullets.remove(alien_bullet)
             lives -= 1
-            # animate_death()
             
             if lives <= 0:
                 handle_lose_condition()
-                
+                return 
+            
+            animate_death()
         elif alien_bullet.top > HEIGHT:
             alien_bullets.remove(alien_bullet)
             
@@ -196,17 +214,21 @@ def handle_lose_condition():
     clock.unschedule(move_aliens)
     alien_bullets.clear()
     bullet = None
+    player.image = 'star3'
 
 def reset_game():
-    global lives, score, is_playing, difficulty, alien_direction
+    global lives, score, is_playing, difficulty, alien_direction, alien_delay
     alien_direction = 20
     is_playing = True
     lives = 3
     score = 0
     difficulty = 1
+    alien_delay = 1
     aliens.clear()
     draw_all_aliens(difficulty)
-    clock.schedule_interval(move_aliens, 1)
+    clock.schedule(move_aliens, alien_delay)
+    
+    player.image = 'playership2_orange'
     
     shields.clear()
     spawn_shield((100, 500))
@@ -215,13 +237,6 @@ def reset_game():
     
     set_ufo()
 
-# def animate_death(frame=1):
-#     global player, is_playing
-#     if frame > 3:
-#         player.image = 'playership2_orange'
-#     else:
-#         player.image = f'star{frame}'
-#         clock.schedule_unique(lambda: animate_death(frame + 1), 1)
 
 def draw_game_screen():
     if not is_playing:
@@ -241,16 +256,15 @@ def on_mouse_down(pos, button):
         has_game_started = True
         
 def on_key_down(key, unicode):
-    global bullet, is_playing
-    
-    if key == keys.SPACE and bullet == None and is_playing:
+    global bullet, is_playing    
+    if key == keys.SPACE and bullet == None and is_playing and not paused:
         bullet = Actor('laserblue07', player.pos)
 
 # Update - Handle ongoing input, update positions, check interactions
 def update():
     global bullet, is_playing, score
     
-    if not is_playing:
+    if not is_playing or paused:
         return
     
     if (keyboard[keys.LEFT] or keyboard[keys.A]) and player.left > 0:
