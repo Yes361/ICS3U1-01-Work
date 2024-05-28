@@ -132,13 +132,13 @@ def move_aliens():
     spawn_alien_bullet()
         
 def damage_shield(alien_bullet):
-    for idx, shield in enumerate(shields):
+    for shield in shields:
         if not shield.colliderect(alien_bullet):
             continue
         
         shield.level -= 1
         if shield.level <= 0:
-            shields.pop(idx)
+            shields.remove(shield)
             return True
         
         shield.image = f'shield{shield.level}'
@@ -147,14 +147,14 @@ def damage_shield(alien_bullet):
 
 def handle_alien_bullets():
     global lives, is_playing
-    for idx, alien_bullet in enumerate(alien_bullets):
+    for alien_bullet in alien_bullets:
         alien_bullet.y += 5
         
         if damage_shield(alien_bullet):
-            alien_bullets.pop(idx)
+            alien_bullets.remove(alien_bullet)
         
         elif alien_bullet.colliderect(player):
-            alien_bullets.pop(idx)
+            alien_bullets.remove(alien_bullet)
             lives -= 1
             # animate_death()
             
@@ -162,7 +162,7 @@ def handle_alien_bullets():
                 handle_lose_condition()
                 
         elif alien_bullet.top > HEIGHT:
-            alien_bullets.pop(idx)
+            alien_bullets.remove(alien_bullet)
             
 def handle_player_bullets():
     global bullet, score
