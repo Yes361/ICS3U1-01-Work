@@ -115,22 +115,21 @@ def spawn_bullet(pos):
     bullet.scale = 0.5
     return bullet
 
-def spawn_alien_bullet():
-    global aliens, alien_bullets, lives
-    if len(aliens) == 0:
-        lives += 1
-        draw_all_aliens()
-        
-    alien = random.choice(aliens)
+def spawn_alien_bullet(alien):
+    global aliens, alien_bullets
     if random.random() < 1:
         bullet = spawn_bullet(alien.pos)
         alien_bullets.append(bullet)
 
 def move_aliens():
-    global alien_direction, aliens, alien_delay
+    global alien_direction, aliens, alien_delay, lives
     
-    if game_paused or not game_active:
+    if not is_game_running():
         return
+    
+    if len(aliens) == 0:
+        lives += 1
+        draw_all_aliens()
     
     direction_change = determine_direction()
     if direction_change:
@@ -149,11 +148,9 @@ def move_aliens():
         handle_lose_condition()
         return
     
-    if random.random() < 0.5:
-        spawn_alien_bullet()
-    
-    # clock.schedule(move_aliens, alien_delay)    
-            
+    alien = random.choice(aliens)
+    spawn_alien_bullet(alien)
+                
 def damage_shield(alien_bullet):
     for shield in shields:
         if not shield.colliderect(alien_bullet):
@@ -186,9 +183,8 @@ def handle_alien_bullets():
     for alien_bullet in alien_bullets:
         alien_bullet.y += 5
         
-        if damage_shield(alien_bullet):
+        if damage_shield(alien_bullet) or alien_bullet.top > HEIGHT:
             alien_bullets.remove(alien_bullet)
-        
         elif alien_bullet.colliderect(player):
             alien_bullets.remove(alien_bullet)
             lives -= 1
@@ -198,8 +194,6 @@ def handle_alien_bullets():
                 return 
             
             animate_death()
-        elif alien_bullet.top > HEIGHT:
-            alien_bullets.remove(alien_bullet)
             
 def handle_player_bullets():
     global bullet, score
@@ -211,7 +205,7 @@ def handle_player_bullets():
         bullet = None
         return
     
-    if bullet and bullet.bottom < 0:
+    if bullet.bottom < 0:
         bullet = None
         return
     
@@ -221,7 +215,6 @@ def handle_player_bullets():
             score += alien.points
             bullet = None
             return
-
         
 def handle_lose_condition():
     global game_active, bullet
@@ -232,9 +225,10 @@ def handle_lose_condition():
     player.image = 'star3'
 
 def reset_game():
-    global lives, score, game_active, difficulty, alien_direction, alien_delay
+    global lives, score, game_active, game_paused, difficulty, alien_direction, alien_delay
     alien_direction = 20
     game_active = True
+    game_paused = False
     lives = 3
     score = 0
     difficulty = 1
@@ -251,6 +245,9 @@ def reset_game():
     spawn_shield((700, 500))
     
     set_ufo()
+    
+def is_game_running():
+    return game_active and not game_paused
 
 
 def draw_game_screen():
@@ -264,20 +261,20 @@ def draw_game_screen():
 # Event Handlers - Handle one-time input
 def on_mouse_down(pos, button): 
     global game_started, game_active
-    if view_box.collidepoint(pos) and not game_active:
+    if view_box.collidepoint(pos) and not is_game_running():
         reset_game()
         game_started = True
         
 def on_key_down(key, unicode):
     global bullet, game_active    
-    if key == keys.SPACE and bullet == None and game_active and not game_paused:
+    if key == keys.SPACE and bullet == None and is_game_running():
         bullet = Actor('laserblue07', player.pos)
 
 # Update - Handle ongoing input, update positions, check interactions
 def update():
     global bullet, game_active, score
     
-    if not game_active or game_paused:
+    if not is_game_running():
         return
     
     if (keyboard[keys.LEFT] or keyboard[keys.A]) and player.left > 0:
