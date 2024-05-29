@@ -15,7 +15,7 @@ ALIENS_PER_ROW = 9
 # Initialize Global Variables
 score = 0
 lives = 3
-difficulty = 0
+game_level = 0
 game_active = False
 game_started = False
 game_paused = False
@@ -30,6 +30,7 @@ player.scale = 0.5 #resizing sprite to something more reasonable
 ufo = Actor('enemygreen1', pos=(50, 50))
 ufo.points = 100
 ufo.is_waiting = False
+ufo.direction = 1
 
 # Alien Variables
 aliens = []
@@ -57,14 +58,18 @@ def generate_random_tag(prefix, colors, minIndex=0, maxIndex=0):
     return f'{prefix}{color}', color    
 
 def set_ufo():
-    ufo.right = 0
     tag, _ = generate_random_tag('ufo', ['blue', 'green', 'red', 'yellow'])
     ufo.image = tag
     ufo.scale = 0.5
+    ufo.direction *= -1
+    if ufo.direction < 0:
+        ufo.left = WIDTH
+    else:
+        ufo.right = 0
     
 def move_ufo():
-    if ufo.left < WIDTH:
-        ufo.x += 1
+    if (ufo.right > 0 and ufo.direction < 0) or (ufo.left < WIDTH and ufo.direction > 0):
+        ufo.x += ufo.direction
         ufo.is_waiting = False
     elif not ufo.is_waiting:
         next_time = random.randint(10, 20)
@@ -87,7 +92,7 @@ def draw_row_aliens(type, y, points):
         aliens.append(a)
         
 def draw_all_aliens(y=100):
-    global difficulty
+    global game_level
     alien_color_index = {
         'green': 150,
         'black': 200,
@@ -95,7 +100,7 @@ def draw_all_aliens(y=100):
         'red': 300
     }
     row_y = y
-    for i in range(difficulty):
+    for i in range(game_level):
         tag, color, _ = generate_random_tag('enemy', ['green', 'red', 'blue', 'black'], 1, 5)
         draw_row_aliens(tag, row_y, points=alien_color_index[color])
         row_y += 50
@@ -134,7 +139,7 @@ def move_aliens():
     direction_change = determine_direction()
     if direction_change:
         alien_direction *= -1
-        alien_delay -= 0.01
+        alien_delay -= 0.05
     
     below_max_height = False
     for alien in aliens:
@@ -143,6 +148,8 @@ def move_aliens():
             below_max_height |= alien.bottom > alien_max_height
         else:
             alien.x += alien_direction
+    
+    clock.schedule(move_aliens, alien_delay)
     
     if below_max_height:
         handle_lose_condition()
@@ -159,9 +166,8 @@ def damage_shield(alien_bullet):
         shield.level -= 1
         if shield.level <= 0:
             shields.remove(shield)
-            return True
-        
-        shield.image = f'shield{shield.level}'
+        else:
+            shield.image = f'shield{shield.level}'
         return True
     return False
 
@@ -172,6 +178,7 @@ def animate_death():
         player.image = 'playership2_orange'
         player.scale = 0.5
         player.death_frame = 0
+        clock.schedule_unique(move_aliens, alien_delay)
     else:
         game_paused = True
         player.death_frame += 1
@@ -225,17 +232,17 @@ def handle_lose_condition():
     player.image = 'star3'
 
 def reset_game():
-    global lives, score, game_active, game_paused, difficulty, alien_direction, alien_delay
+    global lives, score, game_active, game_paused, game_level, alien_direction, alien_delay
     alien_direction = 20
     game_active = True
     game_paused = False
     lives = 3
     score = 0
-    difficulty = 1
+    game_level = 1
     alien_delay = 1
     aliens.clear()
     draw_all_aliens()
-    clock.schedule_interval(move_aliens, alien_delay)
+    clock.schedule(move_aliens, alien_delay)
 
     player.image = 'playership2_orange'
     
