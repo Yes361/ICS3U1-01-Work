@@ -129,9 +129,6 @@ def spawn_alien_bullet(alien):
 def move_aliens():
     global alien_direction, aliens, alien_delay, lives
     
-    if not is_game_running():
-        return
-    
     if len(aliens) == 0:
         lives += 1
         draw_all_aliens()
@@ -148,15 +145,13 @@ def move_aliens():
             below_max_height |= alien.bottom > alien_max_height
         else:
             alien.x += alien_direction
-    
-    clock.schedule(move_aliens, alien_delay)
-    
+        
     if below_max_height:
         handle_lose_condition()
         return
     
-    alien = random.choice(aliens)
-    spawn_alien_bullet(alien)
+    # alien = random.choice(aliens)
+    # spawn_alien_bullet(alien)
                 
 def damage_shield(alien_bullet):
     for shield in shields:
@@ -178,7 +173,6 @@ def animate_death():
         player.image = 'playership2_orange'
         player.scale = 0.5
         player.death_frame = 0
-        clock.schedule_unique(move_aliens, alien_delay)
     else:
         game_paused = True
         player.death_frame += 1
@@ -226,14 +220,13 @@ def handle_player_bullets():
 def handle_lose_condition():
     global game_active, bullet
     game_active = False
-    clock.unschedule(move_aliens)
     alien_bullets.clear()
     bullet = None
     player.image = 'star3'
 
 def reset_game():
     global lives, score, game_active, game_paused, game_level, alien_direction, alien_delay
-    alien_direction = 20
+    alien_direction = 0.5
     game_active = True
     game_paused = False
     lives = 3
@@ -242,7 +235,6 @@ def reset_game():
     alien_delay = 1
     aliens.clear()
     draw_all_aliens()
-    clock.schedule(move_aliens, alien_delay)
 
     player.image = 'playership2_orange'
     
@@ -283,6 +275,8 @@ def update():
     
     if not is_game_running():
         return
+    
+    move_aliens()
     
     if (keyboard[keys.LEFT] or keyboard[keys.A]) and player.left > 0:
         player.x -= 5
