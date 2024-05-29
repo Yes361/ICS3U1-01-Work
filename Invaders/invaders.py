@@ -71,7 +71,6 @@ def move_ufo():
         clock.schedule(set_ufo, next_time)
         ufo.is_waiting = True    
 
-
 def spawn_shield(pos):
     shield = Actor('shield3', pos=pos)
     shield.level = 3
@@ -87,7 +86,8 @@ def draw_row_aliens(type, y, points):
         a.points = points
         aliens.append(a)
         
-def draw_all_aliens(difficulty, y=100):
+def draw_all_aliens(y=100):
+    global difficulty
     alien_color_index = {
         'green': 150,
         'black': 200,
@@ -119,7 +119,7 @@ def spawn_alien_bullet():
     global aliens, alien_bullets, lives
     if len(aliens) == 0:
         lives += 1
-        draw_all_aliens(difficulty)
+        draw_all_aliens()
         
     alien = random.choice(aliens)
     if random.random() < 1:
@@ -149,12 +149,11 @@ def move_aliens():
         handle_lose_condition()
         return
     
-    spawn_alien_bullet()
+    if random.random() < 0.5:
+        spawn_alien_bullet()
     
     # clock.schedule(move_aliens, alien_delay)    
-    
-clock.schedule_interval(move_aliens, alien_delay)
-        
+            
 def damage_shield(alien_bullet):
     for shield in shields:
         if not shield.colliderect(alien_bullet):
@@ -241,9 +240,9 @@ def reset_game():
     difficulty = 1
     alien_delay = 1
     aliens.clear()
-    draw_all_aliens(difficulty)
-    clock.schedule(move_aliens, alien_delay)
-    
+    draw_all_aliens()
+    clock.schedule_interval(move_aliens, alien_delay)
+
     player.image = 'playership2_orange'
     
     shields.clear()
