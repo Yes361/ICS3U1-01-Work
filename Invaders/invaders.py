@@ -108,9 +108,7 @@ def draw_all_aliens(y=100):
 def determine_direction():
     global aliens, alien_direction
     for alien in aliens:
-        if alien_direction < 0 and alien.left < 50:
-            return True
-        if alien_direction > 0 and alien.right > 750:
+        if (alien_direction < 0 and alien.left < 50) or (alien_direction > 0 and alien.right > 750):
             return True
     return False
 
@@ -125,17 +123,9 @@ def spawn_alien_bullet(alien):
     if random.random() < 1:
         bullet = spawn_bullet(alien.pos)
         alien_bullets.append(bullet)
-
-def move_aliens():
-    global alien_direction, aliens, alien_delay, lives
-    
-    if not is_game_running():
-        return
-    
-    if len(aliens) == 0:
-        lives += 1
-        draw_all_aliens()
-    
+        
+def move_alien():
+    global alien_direction, alien_delay
     direction_change = determine_direction()
     if direction_change:
         alien_direction *= -1
@@ -148,12 +138,24 @@ def move_aliens():
             below_max_height |= alien.bottom > alien_max_height
         else:
             alien.x += alien_direction
-    
-    clock.schedule(move_aliens, alien_delay)
-    
+            
     if below_max_height:
         handle_lose_condition()
         return
+
+def manage_alien_behavior():
+    global aliens, alien_delay, lives
+    
+    if not is_game_running():
+        return
+    
+    if len(aliens) == 0:
+        lives += 1
+        draw_all_aliens()
+        
+    move_alien()
+    
+    clock.schedule(manage_alien_behavior, alien_delay)
     
     alien = random.choice(aliens)
     spawn_alien_bullet(alien)
@@ -178,7 +180,7 @@ def animate_death():
         player.image = 'playership2_orange'
         player.scale = 0.5
         player.death_frame = 0
-        clock.schedule_unique(move_aliens, alien_delay)
+        clock.schedule_unique(manage_alien_behavior, alien_delay)
     else:
         game_paused = True
         player.death_frame += 1
@@ -226,7 +228,7 @@ def handle_player_bullets():
 def handle_lose_condition():
     global game_active, bullet
     game_active = False
-    clock.unschedule(move_aliens)
+    clock.unschedule(manage_alien_behavior)
     alien_bullets.clear()
     bullet = None
     player.image = 'star3'
@@ -242,7 +244,7 @@ def reset_game():
     alien_delay = 1
     aliens.clear()
     draw_all_aliens()
-    clock.schedule(move_aliens, alien_delay)
+    clock.schedule(manage_alien_behavior, alien_delay)
 
     player.image = 'playership2_orange'
     
