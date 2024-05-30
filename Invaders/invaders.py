@@ -1,5 +1,13 @@
+"""
+Title: Space Invaders
+Author: Raiyan Islam
+Date: 2024-05-31
+Description:
+"""
+
 import pgzrun
 from pgzero.builtins import Actor, clock, animate, sounds, keys, keyboard, Rect
+from typing import List
 from pgzhelper import * 
 import random
 import os
@@ -11,7 +19,7 @@ os.environ['SDL_VIDEO_CENTERED'] = '1' #Forces window to be centered on screen.
 WIDTH = 800
 HEIGHT = 600
 ALIENS_PER_ROW = 9
-
+ALIEN_VERTICAL_SPACING = 50
 # Initialize Global Variables
 score = 0
 lives = 3
@@ -27,17 +35,19 @@ player.death_frame = 0
 player.scale = 0.5 #resizing sprite to something more reasonable
 
 # UFO Actor
-ufo = Actor('enemygreen1', pos=(50, 50))
+ufo = Actor('enemygreen1', pos=(-50, 50))
 ufo.points = 100
 ufo.is_waiting = False
 ufo.direction = 1
 
 # Alien Variables
-aliens = []
-alien_bullets = []
+aliens: List[Actor] = []
+alien_bullets: List[Actor] = []
+top_row_aliens: List[Actor] = []
+alien_max_height = 450
 alien_direction = 20
 alien_delay = 1
-alien_max_height = 450
+alien_delay_rate = 0.05
 
 # Other variables
 shields = []
@@ -83,32 +93,54 @@ def spawn_shield(pos):
 
 def draw_row_aliens(type, y, points):
     global aliens
-    for x in range(ALIENS_PER_ROW):
+    row = []
+    for idx in range(ALIENS_PER_ROW):
         a = Actor(type)
         a.scale = 0.5
-        xc = (WIDTH - ALIENS_PER_ROW * 60) // 2 + (x * 60) + 30 # A little math to center the row
+        xc = (WIDTH - ALIENS_PER_ROW * 60) // 2 + (idx * 60) + 30 # A little math to center the row
         a.center = (xc, y)
         a.points = points
+        a.row = idx
         aliens.append(a)
+        row.append(a)
+    return row
+        
         
 def draw_all_aliens(y=100):
-    global game_level
+    global game_level, top_row_aliens
+    
     alien_color_index = {
         'green': 150,
         'black': 200,
         'blue': 250,
         'red': 300
     }
-    row_y = y
-    for i in range(game_level):
+    
+    for idx in range(2):
         tag, color, _ = generate_random_tag('enemy', ['green', 'red', 'blue', 'black'], 1, 5)
-        draw_row_aliens(tag, row_y, points=alien_color_index[color])
-        row_y += 50
+        
+        y_level = y + ALIEN_VERTICAL_SPACING * idx
+        row = draw_row_aliens(tag, y_level, points=alien_color_index[color])
+        if idx == 0:
+            top_row_aliens = row
 
-def determine_direction():
+def find_highest_alien(row):
+    global top_row_aliens
+    
+    current_height = HEIGHT
+    current_alien = None
+    for alien in aliens:
+        if alien.row == row and alien.y < current_height:
+            current_alien = alien
+            current_height = alien.y
+            
+    top_row_aliens[row] = current_alien
+    return current_alien
+
+def determine_direction(left = 50, right = 750):
     global aliens, alien_direction
     for alien in aliens:
-        if (alien_direction < 0 and alien.left < 50) or (alien_direction > 0 and alien.right > 750):
+        if (alien_direction < 0 and alien.left < left) or (alien_direction > 0 and alien.right > right):
             return True
     return False
 
@@ -118,30 +150,34 @@ def spawn_bullet(pos):
     bullet.scale = 0.5
     return bullet
 
-def spawn_alien_bullet(alien):
-    global aliens, alien_bullets
-    if random.random() < 1:
-        bullet = spawn_bullet(alien.pos)
-        alien_bullets.append(bullet)
+def spawn_alien_bullet():
+    global aliens, alien_bullets, top_row_aliens
+    
+    filtered_alien = list(filter(lambda x: x != None, top_row_aliens))
+    alien = random.choice(filtered_alien)
+    bullet = spawn_bullet(alien.pos)
+    
+    alien_bullets.append(bullet)
         
 def move_alien():
-    global alien_direction, alien_delay
+    global alien_direction, alien_delay, aliens
     direction_change = determine_direction()
+    
     if direction_change:
         alien_direction *= -1
-        alien_delay -= 0.05
+        # TODO: Cap alien delay
+        alien_delay -= alien_delay_rate
     
     below_max_height = False
     for alien in aliens:
         if direction_change:
-            alien.y += 50
+            alien.y += ALIEN_VERTICAL_SPACING
             below_max_height |= alien.bottom > alien_max_height
         else:
             alien.x += alien_direction
             
     if below_max_height:
         handle_lose_condition()
-        return
 
 def manage_alien_behavior():
     global aliens, alien_delay, lives
@@ -154,11 +190,9 @@ def manage_alien_behavior():
         draw_all_aliens()
         
     move_alien()
+    spawn_alien_bullet()
     
     clock.schedule(manage_alien_behavior, alien_delay)
-    
-    alien = random.choice(aliens)
-    spawn_alien_bullet(alien)
                 
 def damage_shield(alien_bullet):
     for shield in shields:
@@ -188,7 +222,7 @@ def animate_death():
         clock.schedule_unique(animate_death, 0.3)
 
 def handle_alien_bullets():
-    global lives, game_active
+    global lives, alien_bullets
     for alien_bullet in alien_bullets:
         alien_bullet.y += 5
         
@@ -196,16 +230,15 @@ def handle_alien_bullets():
             alien_bullets.remove(alien_bullet)
         elif alien_bullet.colliderect(player):
             alien_bullets.remove(alien_bullet)
-            lives -= 1
             
+            lives -= 1
             if lives <= 0:
                 handle_lose_condition()
-                return 
-            
-            animate_death()
+            else:
+                animate_death()
             
 def handle_player_bullets():
-    global bullet, score
+    global aliens, bullet, score
     bullet.y -= 5   
          
     if ufo.colliderect(bullet):
@@ -219,15 +252,19 @@ def handle_player_bullets():
         return
     
     for alien in aliens:
-        if bullet.colliderect(alien):
-            aliens.remove(alien)
-            score += alien.points
-            bullet = None
-            return
+        if not bullet.colliderect(alien):
+            continue
+        
+        aliens.remove(alien)
+        find_highest_alien(alien.row)
+        score += alien.points
+        bullet = None
+        return
         
 def handle_lose_condition():
-    global game_active, bullet
+    global game_active, game_paused, bullet
     game_active = False
+    game_paused = False
     clock.unschedule(manage_alien_behavior)
     alien_bullets.clear()
     bullet = None
@@ -245,9 +282,8 @@ def reset_game():
     aliens.clear()
     draw_all_aliens()
     clock.schedule(manage_alien_behavior, alien_delay)
-
     player.image = 'playership2_orange'
-    
+    player.scale = 0.5
     shields.clear()
     spawn_shield((100, 500))
     spawn_shield((400, 500))
@@ -320,9 +356,5 @@ def draw():
     
     screen.draw.text(f'{score}', (50, 50))
     screen.draw.text(f'{lives}', (750, 50))
-
-
-# Setup, Scheduling, and Go:
-set_ufo()
 
 pgzrun.go()
