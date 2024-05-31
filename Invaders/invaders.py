@@ -226,10 +226,15 @@ def handle_alien_bullets():
     for alien_bullet in alien_bullets:
         alien_bullet.y += 5
         
-        if damage_shield(alien_bullet) or alien_bullet.top > HEIGHT:
+        if damage_shield(alien_bullet):
+            alien_bullets.remove(alien_bullet)
+            sounds.forcefield_002.play()
+            
+        elif alien_bullet.top > HEIGHT:
             alien_bullets.remove(alien_bullet)
         elif alien_bullet.colliderect(player):
             alien_bullets.remove(alien_bullet)
+            sounds.lowfrequency_explosion_000.play()
             
             lives -= 1
             if lives <= 0:
@@ -257,6 +262,8 @@ def handle_player_bullets():
         
         aliens.remove(alien)
         find_highest_alien(alien.row)
+        
+        sounds.impactmetal_003.play()
         score += alien.points
         bullet = None
         return
@@ -314,6 +321,7 @@ def on_key_down(key, unicode):
     global bullet, game_active    
     if key == keys.SPACE and bullet == None and is_game_running():
         bullet = Actor('laserblue07', player.pos)
+        sounds.lasersmall_000.play()
 
 # Update - Handle ongoing input, update positions, check interactions
 def update():
