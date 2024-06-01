@@ -217,7 +217,7 @@ def move_alien():
     
     # If the aliens are above a certain y threshold, trigger the lost condition
     if below_max_height:
-        handle_lose_condition()
+        handle_lose_condition('The aliens have invaded!!!')
 
 def next_level():
     global lives, game_level, alien_delay
@@ -299,7 +299,7 @@ def handle_alien_bullets():
             
             lives -= 1
             if lives <= 0:
-                handle_lose_condition()
+                handle_lose_condition('Humanity\'s last hope...')
             else:
                 animate_death()
             
@@ -338,11 +338,10 @@ def handle_player_bullets():
 
 # Lose Condition
 def handle_lose_condition(msg):
-    global game_active, game_paused, bullet
+    global game_active, game_paused, bullet, death_message
     game_active = False
     game_paused = False
     bullet = None
-    
     death_message = msg
     
     alien_bullets.clear()
@@ -356,6 +355,7 @@ def reset_game():
     alien_direction = 20
     game_active = True
     game_paused = False
+    
     lives = 3
     score = 0
     game_level = 1
@@ -379,25 +379,27 @@ def is_game_running():
 
 # Draws the start game/game over screen
 def draw_game_screen():
+    global score, death_message
     if not game_active:
         screen.draw.filled_rect(view_box, (0, 0, 0))
         screen.draw.rect(view_box, (255, 255, 255))
-        screen.draw.text('Click this box to play', center=(400, 280))
-        screen.draw.text('Controls: Arrow keys to move', center=(400, 320))
-        screen.draw.text('Space to Shoot', center=(400, 340))
+        screen.draw.text('Click this box to play', center=(400, 260))
+        screen.draw.text('Controls: Arrow keys to move', center=(400, 330))
+        screen.draw.text('Space to Shoot', center=(400, 350))
         if game_started:
-            screen.draw.text(f'HIGHSCORE: {score}', center=(400, 250))
+            screen.draw.text(f'HIGHSCORE: {score}', center=(400, 230))
+            screen.draw.text(f'{death_message}', center=(400, 290))
 
 ### Event Handlers
 
 def on_mouse_down(pos, button): 
-    global game_started, game_active
-    if view_box.collidepoint(pos) and not is_game_running():
+    global game_started
+    if view_box.collidepoint(pos) and not is_game_running(): # Start Game once view box is pressed
         reset_game()
         game_started = True
         
 def on_key_down(key, unicode):
-    global bullet, game_active    
+    global bullet    
     
     # Spawn bullet
     if key == keys.SPACE and bullet == None and is_game_running():
@@ -405,8 +407,7 @@ def on_key_down(key, unicode):
         sounds.lasersmall_000.play()
 
 # Update - Handle ongoing input, update positions, check interactions
-def update(dt):
-    global bullet, game_active, score    
+def update(dt):    
     
     # Don't run anything if the game isn't active
     if not is_game_running():
