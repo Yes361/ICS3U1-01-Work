@@ -10,8 +10,8 @@ The objective is to elimate all the aliens before they reach the bottom.
 
 from pgzero.builtins import Actor, clock, sounds, keys, keyboard, Rect
 from typing import List
-from pgzhelper import * 
 import pgzrun
+from pgzhelper import * 
 import random
 import os
 
@@ -26,6 +26,7 @@ ALIENS_PER_ROW = 9
 ALIEN_VERTICAL_SPACING = 50
 BULLET_PER_TICK_CHANCE = 0.5
 MIN_MOVEMENT_DELAY = 0.5
+ALIEN_DEFAULT_DELAY = 1
 
 # Initialize Global Variables
 score = 0
@@ -81,6 +82,7 @@ def generate_random_tag(prefix, colors, minIndex=0, maxIndex=0):
 # Set UFO properties while it's offscreen
 def set_ufo():
     tag, _ = generate_random_tag('ufo', ['blue', 'green', 'red', 'yellow'])
+    ufo.points = random.randint(5, 10) * 100
     ufo.image = tag
     ufo.scale = 0.5
     ufo.direction *= -1
@@ -124,28 +126,30 @@ def draw_row_aliens(type, y, points):
     return row
         
 # Draws all the Aliens based on the current level/difficulty
-def draw_all_aliens(y=100):
-    global game_level, aliens, top_row_aliens
+def draw_all_aliens(difficulty=1, y=100):
+    global aliens, top_row_aliens
     
     aliens.clear()
     
     # TODO: change alien points
     alien_color_index = {
-        'green': 150,
-        'black': 200,
-        'blue': 250,
-        'red': 300
+        'green': 50,
+        'black': 100,
+        'blue': 200,
+        'red': 250
     }
     
     # TODO: figure out a meaningful progression system
-    for idx in range(2):
+    rows = min(difficulty, 4) # Cap alien rows at 4
+    for idx in range(rows):
         tag, color, _ = generate_random_tag('enemy', ['green', 'red', 'blue', 'black'], 1, 5)
         
         y_level = y + ALIEN_VERTICAL_SPACING * idx
-        row = draw_row_aliens(tag, y_level, points=alien_color_index[color])
+        points = alien_color_index[color] + (rows - idx) * 50 # Score is based on color and row
+        alien_row = draw_row_aliens(tag, y_level, points)
         
         if idx == 0:
-            top_row_aliens = row # Set the top row of aliens to the first row
+            top_row_aliens = alien_row # Set the top row of aliens to the first row
 
 # Update the highest alien in top_row_aliens for a specific row
 def find_highest_alien(row):
@@ -165,7 +169,7 @@ def find_highest_alien(row):
 # Returns True if the aliens should change direction
 # The params, left and right, represent how far the aliens can go
 # in the x-axis
-def determine_direction(left = 50, right = 750):
+def determine_direction(left = 50, right = WIDTH - 50):
     global aliens, alien_direction
     for alien in aliens:
         if (alien_direction < 0 and alien.left < left) or (alien_direction > 0 and alien.right > right):
@@ -215,17 +219,24 @@ def move_alien():
     if below_max_height:
         handle_lose_condition()
 
+def next_level():
+    global lives, game_level, alien_delay
+    
+    lives += 1
+    game_level += 1
+    alien_delay = ALIEN_DEFAULT_DELAY
+    draw_all_aliens(game_level)
+
 # Manages alien bullet spawning and movement
 def manage_alien_behavior():
-    global aliens, alien_delay, lives
+    global aliens, alien_delay
     
     if not is_game_running():
         return
     
     # Increment lives counter if there are no aliens remaining
     if len(aliens) == 0:
-        lives += 1
-        draw_all_aliens()
+        next_level()
         
     move_alien()
     
@@ -298,7 +309,12 @@ def handle_player_bullets():
     bullet.y -= 5   
          
     if ufo.colliderect(bullet):
-        ufo.left = WIDTH # Move it offscreen
+        # Move it offscreen/skip to the end
+        if ufo.direction > 0:
+            ufo.left = WIDTH 
+        else:
+            ufo.right = 0
+        
         score += ufo.points
         bullet = None
         return
@@ -307,6 +323,7 @@ def handle_player_bullets():
         bullet = None
         return
     
+    # Find which alien is shot
     for alien in aliens:
         if not bullet.colliderect(alien):
             continue
@@ -365,7 +382,9 @@ def draw_game_screen():
     if not game_active:
         screen.draw.filled_rect(view_box, (0, 0, 0))
         screen.draw.rect(view_box, (255, 255, 255))
-        screen.draw.text('play moron', center=(400, 300))
+        screen.draw.text('Click this box to play', center=(400, 280))
+        screen.draw.text('Controls: Arrow keys to move', center=(400, 320))
+        screen.draw.text('Space to Shoot', center=(400, 340))
         if game_started:
             screen.draw.text(f'HIGHSCORE: {score}', center=(400, 250))
 
@@ -427,6 +446,6 @@ def draw():
     draw_game_screen()
     
     screen.draw.text(f'{score}', (50, 50))
-    screen.draw.text(f'{lives}', (750, 50))
+    screen.draw.text(f'{lives}', (WIDTH - 50, 50))
 
 pgzrun.go()
